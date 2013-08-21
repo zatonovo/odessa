@@ -1,7 +1,5 @@
 # :vim set filetype=R
-require(lambda.r)
-require(futile.logger)
-require(RCurl)
+BINDING_TOKEN_REGEX <- '\\$\\w+|\\$\\{\\w\\}+'
 
 #' @example
 #' create_uri('electric-consumption')
@@ -20,29 +18,40 @@ text <- 'field,format
 Zip.Code,$zip_code
 Location,"($latitude, $longitude)"'
 
-# binding.for(df,'year')
-text <- 'field,format
-Year,$year $season'
-
-text <- 'field,format
-MONTH,$month
-YEAR,$year'
-
 
 }
 
-get_odessa_standard() %as% {
-  map <- 'field,format
-datetime,${date}T$time
-date,$year-$month-$day
-time,$hour:$minute:$second.$microsecond
+odessa_graph() %as% {
+  map <- 'field,parent,type,format
+datetime,NA,POSIXct,${date}T$time
+date,datetime,POSIXct,$year-$month-$day
+time,datetime,POSIXct,$hour:$minute:$second.$microsecond
+season,NA,string,$season
+year,date,integer,$year
+month,date,integer,$month
+day,date,integer,$day
+hour,time,integer,$hour
+minute,time,integer,$minute
+second,time,integer,$second
+microsecond,time,integer,$microsecond
+postal_code,NA,string,$postal_code
+location,NA,string,"($latitude, $longitude)"
+latitude,location,float,$latitude
+longitude,location,float,$longitude
 '
+  read.csv(textConnection(map), as.is=TRUE)
+}
 
+#' A binding is what links a data set to the odessa standard
+get_binding(id) %::% character : a
+get_binding(id) %when% {
+  length(grep('odessa://', id, fixed=TRUE)) == 0
+} %as% {
+  read.csv(id, as.is=TRUE)
 }
 
 get_binding(id) %as% {
-  binding <- ''
-
-
-
+  uri <- paste('http://',id, sep='')
+  read.csv(uri, as.is=TRUE)
 }
+
