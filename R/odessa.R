@@ -16,13 +16,22 @@ fetch(id, format='csv', fields=NULL, ...) %as% {
 
 
 
-# Look for exact match in data set binding (in the format column)
-# If so then return parsed value (in case of pattern in format)
-# If not then look for match in odessa standard
-# If match then find parent and search until match or terminate
-# Keep track of graph so each format can be applied
+# 1 Look for exact match in data set binding (in the format column)
+# 2 If so then return parsed value (in case of pattern in format)
+# 3 If not then look for match in odessa standard
+# 4 If match then find parent and search until match or terminate
+# 5 Keep track of graph so each format can be applied
 binding.for(x, field) %as% {
   binding <- get_binding(x@odessa.id)
+  # 1
+  search.string <- sprintf('\\$%s|\\$\\{%s\\}', field, field)
+  matches <- grep(search.string, binding$format, value=TRUE)
+  regexes <- sub(search.string, '(.*)', matches)
+  # Replace other $tokens with .*
+  # Now remove everything but the matched token
+  #sub("(.*)T.*", '\\1', '2012-23-23T12:33:32.233')
+  sub(regexes,'\\1', data)
+  
   apply()
 }
 

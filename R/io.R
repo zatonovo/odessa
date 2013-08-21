@@ -29,7 +29,10 @@ MONTH,$month
 YEAR,$year'
 
 
-map <- 'field,format
+}
+
+get_odessa_standard() %as% {
+  map <- 'field,format
 datetime,${date}T$time
 date,$year-$month-$day
 time,$hour:$minute:$second.$microsecond
@@ -38,5 +41,8 @@ time,$hour:$minute:$second.$microsecond
 }
 
 get_binding(id) %as% {
+  binding <- ''
+
+
 
 }
