@@ -8,7 +8,9 @@
 
 #' df1 <- fetch('zh3n-jtnt')
 #' df2 <- fetch('zh3n-jtnt')
-fetch(id, format='csv', fields=NULL, ...) %as% {
+fetch(id, format='csv', fields=NULL, ...) %when% {
+  length(grep('odessa://',id, fixed=TRUE)) > 0
+} %as% {
   uri <- create_uri(id, format, fields)
   z <- textConnection(getURL(uri))
   o <- read.csv(z, ..., as.is=TRUE)
@@ -16,7 +18,36 @@ fetch(id, format='csv', fields=NULL, ...) %as% {
   o
 }
 
+fetch(id, format='csv', fields=NULL, ...) %as% {
+  z <- paste(id,'csv', sep='.')
+  flog.info("Reading local file %s",z)
+  o <- read.csv(z, ..., as.is=TRUE)
+  o@odessa.id <- paste(id,'binding.csv', sep='.')
+  o
+}
 
+search_string(field) %as% sprintf('\\$%s|\\$\\{%s\\}', field, field)
+
+map.value(x, binding, field) %as% {
+  search.string <- search_string(field)
+  match.idx <- grep(search.string, binding$format)
+  regexes <- sub(search.string, '(.*)', binding$format[match.idx])
+  # Replace other $tokens with .*
+  regexes <- gsub(BINDING_TOKEN_REGEX, '.*', regexes, perl=TRUE)
+  # Now remove everything but the matched token
+  sub(regexes,'\\1', x[,binding$field[match.idx]])
+}
+
+map.value(x, binding, field, EMPTY) %as% map.value(x, binding, field)
+
+map.value(x, binding, field, path) %as% {
+  od <- odessa_graph()
+  node <- path[1]
+  od <- od[od$field==node,]
+  search.string <- search_string(od$field[1])
+  binding$format <- sub(search.string, od$format[1], binding$format, perl=TRUE)
+  map.value(x, binding, field, path[-1])
+}
 
 # 4 If match then find parent and search until match or terminate
 # 5 Keep track of graph so each format can be applied
@@ -25,17 +56,16 @@ binding.for(x, field) %as% {
   binding <- get_binding(x@odessa.id)
 
   if (field %in% direct) {
-    # 1
-    search.string <- sprintf('\\$%s|\\$\\{%s\\}', field, field)
-    match.idx <- grep(search.string, binding$format)
-    regexes <- sub(search.string, '(.*)', binding$format[match.idx])
-    # Replace other $tokens with .*
-    regexes <- gsub(BINDING_TOKEN_REGEX, '.*', regexes, perl=TRUE)
-    # Now remove everything but the matched token
-    sub(regexes,'\\1', x[,binding$field[match.idx]])
+    map.value(x, binding, field)
   }
   else {
-    graph <- field.graph(x)
+    graph <- field.graph(field)
+    if (length(intersect(graph, direct)) < 1) {
+      msg <- "Cannot derive '%s' from available bindings: %s"
+      stop(sprintf(msg, field, paste(direct,collapse=', ')))
+    }
+    node <- which(direct == graph)
+    map.value(x, binding, field, rev(graph[2:node]))
   }
 }
 
@@ -82,7 +112,8 @@ odessa.id <- function(x) attr(x,'odessa.id')
 which.bindings(a) %as% {
   binding <- get_binding(a@odessa.id)
   m <- regexpr(BINDING_TOKEN_REGEX, binding$format, perl=TRUE)
-  regmatches(binding$format, m)
+  b <- regmatches(binding$format, m)
+  gsub('$','',b, fixed=TRUE)
 }
 
 
