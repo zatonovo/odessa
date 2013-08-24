@@ -6,8 +6,9 @@
 #' # Chicago course success rate
 #' df2 <- fetch('vz8e-347q')
 
-#' df1 <- fetch('zh3n-jtnt')
-#' df2 <- fetch('zh3n-jtnt')
+#' geo1 <- fetch('geo1')
+#' geo2 <- fetch('geo2')
+#' z <- conjoin(geo1, geo2, 'location')
 fetch(id, format='csv', fields=NULL, ...) %when% {
   length(grep('odessa://',id, fixed=TRUE)) > 0
 } %as% {
@@ -28,6 +29,17 @@ fetch(id, format='csv', fields=NULL, ...) %as% {
 
 search_string(field) %as% sprintf('\\$%s|\\$\\{%s\\}', field, field)
 
+map.type(x, 'string') %as% as.character(x)
+map.type(x, 'integer') %as% as.integer(x)
+map.type(x, 'float') %as% as.numeric(x)
+map.type(x, 'date') %as% as.Date(x)
+map.type(x, 'datetime') %as% as.POSIXct(x,format='%Y-%m-%dT%H:%M:%S')
+map.type(x, field) %as% {
+  od <- odessa_graph()
+  type <- od[od$field==field,'type']
+  map.type(x, type)
+}
+
 map.value(x, binding, field) %as% {
   search.string <- search_string(field)
   match.idx <- grep(search.string, binding$format)
@@ -35,7 +47,7 @@ map.value(x, binding, field) %as% {
   # Replace other $tokens with .*
   regexes <- gsub(BINDING_TOKEN_REGEX, '.*', regexes, perl=TRUE)
   # Now remove everything but the matched token
-  sub(regexes,'\\1', x[,binding$field[match.idx]])
+  map.type(sub(regexes,'\\1', x[,binding$field[match.idx]]), field)
 }
 
 map.value(x, binding, field, EMPTY) %as% map.value(x, binding, field)
@@ -49,25 +61,49 @@ map.value(x, binding, field, path) %as% {
   map.value(x, binding, field, path[-1])
 }
 
+map.ancestor(x, field) %as% {
+  od <- odessa_graph()
+  ancestor <- which.ancestors(x)
+  if (all(! field %in% ancestor)) {
+    msg <- "Cannot derive '%s' from available bindings: %s"
+    stop(sprintf(msg, field, paste(direct,collapse=', ')))
+  }
+
+  binding <- get_binding(x@odessa.id)
+  fn <- function(a, b) {
+    search.string <- search_string(a)
+    match.idx <- grep(search.string, binding$format)
+    apply(cbind(x[, binding$field[match.idx]], b), 1, 
+      function(y) sub(search.string, y[1], y[2], perl=TRUE))
+  }
+  template <- gsub('[\\\\/]','', od[od$field==ancestor,'format'], perl=TRUE)
+  fold(fn, which.bindings(x), rep(template,nrow(x)))
+}
+
 # 4 If match then find parent and search until match or terminate
 # 5 Keep track of graph so each format can be applied
 binding.for(x, field) %as% {
   direct <- which.bindings(x)
-  binding <- get_binding(x@odessa.id)
-
-  if (field %in% direct) {
-    map.value(x, binding, field)
-  }
-  else {
-    graph <- field.graph(field)
-    if (length(intersect(graph, direct)) < 1) {
-      msg <- "Cannot derive '%s' from available bindings: %s"
-      stop(sprintf(msg, field, paste(direct,collapse=', ')))
-    }
-    node <- which(direct == graph)
-    map.value(x, binding, field, rev(graph[2:node]))
-  }
+  binding.for(x, field, direct)
 }
+
+binding.for(x, field, direct) %when% {
+  field %in% direct
+} %as% {
+  binding <- get_binding(x@odessa.id)
+  map.value(x, binding, field)
+}
+
+binding.for(x, field, direct) %as% {
+  binding <- get_binding(x@odessa.id)
+  graph <- field.graph(field)
+  if (length(intersect(graph, direct)) < 1)
+    return(map.ancestor(x, field))
+
+  node <- which(direct == graph)
+  map.value(x, binding, field, rev(graph[2:node]))
+}
+
 
 field.graph(NA, graph, acc) %as% acc
 field.graph(EMPTY, graph, acc) %as% acc
@@ -99,9 +135,6 @@ field.path(field.a, field.b) %as% {
   g[1:which(g == lcd)]
 }
 
-transform.field(x, field) %as% {
-
-}
 
 odessa.id <- function(x) attr(x,'odessa.id')
 'odessa.id<-' <- function(x,value) {
@@ -112,8 +145,16 @@ odessa.id <- function(x) attr(x,'odessa.id')
 which.bindings(a) %as% {
   binding <- get_binding(a@odessa.id)
   m <- regexpr(BINDING_TOKEN_REGEX, binding$format, perl=TRUE)
-  b <- regmatches(binding$format, m)
-  gsub('$','',b, fixed=TRUE)
+  gsub('$','', regmatches(binding$format, m), fixed=TRUE)
+}
+
+which.ancestors(a) %as% {
+  b <- which.bindings(a)
+  # Check if any bindings can be derived via the odessa graph
+  od <- odessa_graph()
+  ms <- sapply(b, function(x) regexpr(search_string(x), od$format, perl=TRUE))
+  bs <- fold(function(x,y) x > -1 & y, ms, TRUE)
+  od[bs,'field']
 }
 
 
@@ -124,8 +165,8 @@ which.bindings(a) %as% {
 #' odessa.id(df2) <- 'vz8e-347q.binding.csv'
 #' conjoin(df1,df2, 'year')
 conjoin(a,b, field, ...) %as% {
-  key.a <- binding.for(a, field)
-  key.b <- binding.for(b, field)
-  merge(cbind(odessa.key=key.a,a), cbind(odessa.key=key.b,b),
-    by='odessa.key', ...)
+  key.a <- sapply(field, function(f) binding.for(a, f))
+  key.b <- sapply(field, function(f) binding.for(b, f))
+  key.names <- ifelse(length(field) > 1, paste('odessa.key',field, sep='.'), field)
+  merge(cbind(odessa.key=key.a,a), cbind(odessa.key=key.b,b), by=key.names, ...)
 }

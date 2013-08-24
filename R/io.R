@@ -1,6 +1,11 @@
 # :vim set filetype=R
 BINDING_TOKEN_REGEX <- '\\$\\w+|\\$\\{\\w\\}+'
 
+fold(f, EMPTY , acc) %as% acc
+fold(f, x, acc) %when% { is.null(dim(x)) } %as% fold(f, x[-1], f(x[[1]], acc))
+fold(f, x, acc) %as% fold(f, x[,-1,drop=FALSE], f(x[,1], acc))
+
+
 #' @example
 #' create_uri('electric-consumption')
 create_uri(id, format='csv', fields=NULL) %as% {
@@ -13,29 +18,21 @@ create_uri(id, format='csv', fields=NULL) %as% {
 
 # Wi-Fi: https://data.cityofnewyork.us/Recreation/Wifi-Hotspot-Locations/ehc4-fktp
 # Electric consumption: https://data.cityofnewyork.us/Environment/Electric-Consumption-by-ZIP-Code-2010/74cu-ncm4
-foo <- function() {
-text <- 'field,format
-Zip.Code,$zip_code
-Location,"($latitude, $longitude)"'
-
-
-}
 
 odessa_graph() %as% {
   map <- 'field,parent,type,format
-datetime,NA,POSIXct,${date}T$time
-date,datetime,POSIXct,$year-$month-$day
-time,datetime,POSIXct,$hour:$minute:$second.$microsecond
+datetime,NA,datetime,${date}T$time
+date,datetime,date,$year-$month-$day
+time,datetime,datetime,$hour:$minute:$second.$microsecond
 season,NA,string,$season
 year,date,integer,$year
 month,date,integer,$month
 day,date,integer,$day
 hour,time,integer,$hour
 minute,time,integer,$minute
-second,time,integer,$second
-microsecond,time,integer,$microsecond
+second,time,float,$second
 postal_code,NA,string,$postal_code
-location,NA,string,"($latitude, $longitude)"
+location,NA,string,"\\\\($latitude, $longitude\\\\)"
 latitude,location,float,$latitude
 longitude,location,float,$longitude
 '
