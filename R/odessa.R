@@ -2,25 +2,13 @@
 odessa.options <- OptionsManager('odessa.options')
 
 #' @example
-#' # Number of sessions
-#' df1 <- fetch('vbts-zqt4')
-#' # Chicago course success rate
-#' df2 <- fetch('vz8e-347q')
-
-#' geo1 <- fetch('geo1')
-#' geo2 <- fetch('geo2')
+#' geo1 <- fetch('geolocation-1')
+#' geo2 <- fetch('geolocation-2')
 #' z <- conjoin(geo1, geo2, 'location')
-
-#' geo1.od <- Odessa('geolocation-1')
-#' geo1 <- fetch(geo1.od)
-
-# Look for cached Package
-# Download Package
-# Get binding
-fetch(id, fields=NULL, ...) %as% {
+fetch(id, fn=function(x) x, ...) %as% {
   package <- odessa.options(id)
   if (is.null(package)) {
-    package <- Odessa(id)
+    package <- Odessa(id, fn)
     updateOptions(odessa.options, id,package)
   }
   z <- textConnection(getURL(package$data.uri))
