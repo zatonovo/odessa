@@ -1,5 +1,7 @@
 require(lambda.r)
 require(futile.logger)
+require(futile.options)
 require(RCurl)
+require(RJSONIO)
 source('io.R')
 source('odessa.R')

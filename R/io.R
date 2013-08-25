@@ -5,7 +5,54 @@ fold(f, EMPTY , acc) %as% acc
 fold(f, x, acc) %when% { is.null(dim(x)) } %as% fold(f, x[-1], f(x[[1]], acc))
 fold(f, x, acc) %as% fold(f, x[,-1,drop=FALSE], f(x[,1], acc))
 
+.fetch_json(uri) %as% {
+  conn <- url(uri)
+  #hand <- function(e)
+  #  flog.error("Unable to find package named %s. Does it exist?", id)
+  json <- readLines(conn, warn=FALSE)
+  close(conn)
+  fromJSON(json)
+}
 
+
+.package_uri(id) %as% {
+  base <- 'http://odessa.zatonovo.com/api/3/action/package_show?id='
+  uri <- paste(base,id, sep='')
+  flog.debug("[.description_uri] Constructed %s", uri)
+  uri
+}
+
+Package(id) %as% {
+  uri <- .package_uri(id)
+  .fetch_json(uri)
+}
+
+get_binding_uri(package) %::% Package : character
+get_binding_uri(package) %as% {
+  names <- sapply(package$result$resources, function(r) r$name)
+  idx <- which(names=='binding')
+  package$result$resources[[idx]]$url
+}
+
+get_data_uri(package) %::% Package : character
+get_data_uri(package) %as% {
+  names <- sapply(package$result$resources, function(r) r$name)
+  idx <- which(names=='data')
+  package$result$resources[[idx]]$url
+}
+
+Odessa(id) %as% {
+  package <- Package(id)
+  data.uri <- get_data_uri(package)
+  binding.uri <- get_binding_uri(package)
+
+  conn <- textConnection(getURL(binding.uri))
+  binding <- read.csv(conn, as.is=TRUE)
+  list(id=id, data.uri=data.uri, binding.uri=binding.uri, binding=binding)
+}
+
+
+# OBSOLETE
 #' @example
 #' create_uri('electric-consumption')
 create_uri(id, format='csv', fields=NULL) %as% {
@@ -32,23 +79,30 @@ hour,time,integer,$hour
 minute,time,integer,$minute
 second,time,float,$second
 postal_code,NA,string,$postal_code
-location,NA,string,"\\\\($latitude, $longitude\\\\)"
+location,NA,string,"($latitude, $longitude)"
 latitude,location,float,$latitude
 longitude,location,float,$longitude
 '
+  map <- gsub('([()])', '\\\\\\1', map, perl=TRUE)
   read.csv(textConnection(map), as.is=TRUE)
 }
 
 #' A binding is what links a data set to the odessa standard
 get_binding(id) %::% character : a
-get_binding(id) %when% {
-  length(grep('odessa://', id, fixed=TRUE)) == 0
-} %as% {
-  read.csv(id, as.is=TRUE)
+get_binding(id) %as% {
+  package <- odessa.options(id)
+  if (is.null(package)) stop("Package was not downloaded")
+  package$binding
 }
 
-get_binding(id) %as% {
-  uri <- paste('http://',id, sep='')
-  read.csv(uri, as.is=TRUE)
-}
+#get_binding(id) %when% {
+#  length(grep('odessa://', id, fixed=TRUE)) == 0
+#} %as% {
+#  read.csv(id, as.is=TRUE)
+#}
+
+#get_binding(id) %as% {
+#  uri <- paste('http://',id, sep='')
+#  read.csv(uri, as.is=TRUE)
+#}
 

@@ -1,0 +1,16 @@
+field,parent,type,format
+datetime,NA,datetime,${date}T$time
+date,datetime,date,$year-$month-$day
+time,datetime,datetime,$hour:$minute:$second.$microsecond
+season,NA,string,$season
+year,date,integer,$year
+month,date,integer,$month
+day,date,integer,$day
+hour,time,integer,$hour
+minute,time,integer,$minute
+second,time,float,$second
+postal_code,NA,string,$postal_code
+location,NA,string,"($latitude, $longitude)"
+latitude,location,float,$latitude
+longitude,location,float,$longitude
+

@@ -1,4 +1,5 @@
 # :vim set filetype=R
+odessa.options <- OptionsManager('odessa.options')
 
 #' @example
 #' # Number of sessions
@@ -9,23 +10,40 @@
 #' geo1 <- fetch('geo1')
 #' geo2 <- fetch('geo2')
 #' z <- conjoin(geo1, geo2, 'location')
-fetch(id, format='csv', fields=NULL, ...) %when% {
-  length(grep('odessa://',id, fixed=TRUE)) > 0
-} %as% {
-  uri <- create_uri(id, format, fields)
-  z <- textConnection(getURL(uri))
+
+#' geo1.od <- Odessa('geolocation-1')
+#' geo1 <- fetch(geo1.od)
+
+# Look for cached Package
+# Download Package
+# Get binding
+fetch(id, fields=NULL, ...) %as% {
+  package <- odessa.options(id)
+  if (is.null(package)) {
+    package <- Odessa(id)
+    updateOptions(odessa.options, id,package)
+  }
+  z <- textConnection(getURL(package$data.uri))
   o <- read.csv(z, ..., as.is=TRUE)
-  o@odessa.id <- id
+  o@odessa.id <- package$id
   o
 }
 
-fetch(id, format='csv', fields=NULL, ...) %as% {
-  z <- paste(id,'csv', sep='.')
-  flog.info("Reading local file %s",z)
-  o <- read.csv(z, ..., as.is=TRUE)
-  o@odessa.id <- paste(id,'binding.csv', sep='.')
-  o
+package_list() %as% {
+  uri <- 'http://odessa.zatonovo.com/api/3/action/package_list'
+  data <- .fetch_json(uri)
+  data$result
 }
+
+#fetch(id, format='csv', fields=NULL, ...) %when% {
+#  length(grep('://',id, fixed=TRUE)) > 0
+#} %as% {
+#  z <- paste(id,'csv', sep='.')
+#  flog.info("Reading local file %s",z)
+#  o <- read.csv(z, ..., as.is=TRUE)
+#  o@odessa.id <- paste(id,'binding.csv', sep='.')
+#  o
+#}
 
 search_string(field) %as% sprintf('\\$%s|\\$\\{%s\\}', field, field)
 
