@@ -5,6 +5,9 @@ fold(f, EMPTY , acc) %as% acc
 fold(f, x, acc) %when% { is.null(dim(x)) } %as% fold(f, x[-1], f(x[[1]], acc))
 fold(f, x, acc) %as% fold(f, x[,-1,drop=FALSE], f(x[,1], acc))
 
+
+clean.format <- function(format) gsub('([()])', '\\\\\\1', format, perl=TRUE)
+
 .fetch_json(uri) %as% {
   conn <- url(uri)
   #hand <- function(e)
@@ -42,13 +45,14 @@ get_data_uri(package) %as% {
   package$result$resources[[idx]]$url
 }
 
-Odessa(id, fn=function(x) x) %as% {
+Odessa(id, fn=clean.format) %as% {
   package <- Package(id)
   data.uri <- get_data_uri(package)
   binding.uri <- get_binding_uri(package)
 
   conn <- textConnection(getURL(binding.uri))
   binding <- read.csv(conn, as.is=TRUE)
+  binding$field <- gsub(' ','.', binding$field, fixed=TRUE)
   binding$format <- fn(binding$format)
   close(conn)
   list(id=id, data.uri=data.uri, binding.uri=binding.uri, binding=binding)
@@ -70,11 +74,10 @@ create_uri(id, format='csv', fields=NULL) %as% {
 # Electric consumption: https://data.cityofnewyork.us/Environment/Electric-Consumption-by-ZIP-Code-2010/74cu-ncm4
 
 odessa_graph() %as% {
-  fn <- function(format) gsub('([()])', '\\\\\\1', format, perl=TRUE)
   id <- 'odessa-binding'
   package <- odessa.options(id)
   if (is.null(package)) {
-    package <- Odessa(id, fn)
+    package <- Odessa(id)
     updateOptions(odessa.options, id,package)
   }
   package$binding

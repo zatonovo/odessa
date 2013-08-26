@@ -1,11 +1,15 @@
 # :vim set filetype=R
-odessa.options <- OptionsManager('odessa.options')
+
+odessa.reset <- function() options(odessa.options=list())
+if (!exists('odessa.options'))
+  odessa.options <- OptionsManager('odessa.options')
+
 
 #' @example
 #' geo1 <- fetch('geolocation-1')
 #' geo2 <- fetch('geolocation-2')
 #' z <- conjoin(geo1, geo2, 'location')
-fetch(id, fn=function(x) x, ...) %as% {
+fetch(id, fn=clean.format, ...) %as% {
   package <- odessa.options(id)
   if (is.null(package)) {
     package <- Odessa(id, fn)
@@ -35,6 +39,10 @@ package_list() %as% {
 
 search_string(field) %as% sprintf('\\$%s|\\$\\{%s\\}', field, field)
 
+clean(x) %as% {
+  gsub('\n', ' ', x, fixed=TRUE)
+}
+
 map.type(x, 'string') %as% as.character(x)
 map.type(x, 'integer') %as% as.integer(x)
 map.type(x, 'float') %as% as.numeric(x)
@@ -53,7 +61,7 @@ map.value(x, binding, field) %as% {
   # Replace other $tokens with .*
   regexes <- gsub(BINDING_TOKEN_REGEX, '.*', regexes, perl=TRUE)
   # Now remove everything but the matched token
-  map.type(sub(regexes,'\\1', x[,binding$field[match.idx]]), field)
+  map.type(sub(regexes,'\\1', clean(x[,binding$field[match.idx]])), field)
 }
 
 map.value(x, binding, field, EMPTY) %as% map.value(x, binding, field)
@@ -67,22 +75,26 @@ map.value(x, binding, field, path) %as% {
   map.value(x, binding, field, path[-1])
 }
 
+# This is causing problems:
+# a <- fetch('nyc-energy-consumption-2010')
+# binding.for(head(a), 'location')
 map.ancestor(x, field) %as% {
   od <- odessa_graph()
   ancestor <- which.ancestors(x)
   if (all(! field %in% ancestor)) {
     msg <- "Cannot derive '%s' from available bindings: %s"
-    stop(sprintf(msg, field, paste(direct,collapse=', ')))
+    stop(sprintf(msg, field, paste(which.bindings(x),collapse=', ')))
   }
 
   binding <- get_binding(x@odessa.id)
   fn <- function(a, b) {
     search.string <- search_string(a)
     match.idx <- grep(search.string, binding$format)
-    apply(cbind(x[, binding$field[match.idx]], b), 1, 
+    apply(cbind(clean(x[, binding$field[match.idx]]), b), 1, 
       function(y) sub(search.string, y[1], y[2], perl=TRUE))
   }
-  template <- gsub('[\\\\/]','', od[od$field==ancestor,'format'], perl=TRUE)
+  #template <- gsub('[\\\\/]','', od[od$field==ancestor,'format'], perl=TRUE)
+  template <- od[od$field==ancestor,'format']
   fold(fn, which.bindings(x), rep(template,nrow(x)))
 }
 
@@ -150,17 +162,23 @@ odessa.id <- function(x) attr(x,'odessa.id')
 
 which.bindings(a) %as% {
   binding <- get_binding(a@odessa.id)
-  m <- regexpr(BINDING_TOKEN_REGEX, binding$format, perl=TRUE)
-  gsub('$','', regmatches(binding$format, m), fixed=TRUE)
+  ms <- gregexpr(BINDING_TOKEN_REGEX, binding$format, perl=TRUE)
+  bs <- regmatches(binding$format, ms)[[1]]
+  gsub('$','', bs, fixed=TRUE)
 }
 
+#' Check if any bindings can be derived via the odessa graph
 which.ancestors(a) %as% {
   b <- which.bindings(a)
-  # Check if any bindings can be derived via the odessa graph
   od <- odessa_graph()
-  ms <- sapply(b, function(x) regexpr(search_string(x), od$format, perl=TRUE))
-  bs <- fold(function(x,y) x > -1 & y, ms, TRUE)
-  od[bs,'field']
+  fn <- function(format) {
+    ms <- gregexpr(BINDING_TOKEN_REGEX, format, perl=TRUE)
+    bs <- regmatches(format, ms)[[1]]
+    bs <- gsub('$','', bs, fixed=TRUE)
+    all(bs %in% b)
+  }
+  as <- sapply(od$format, fn)
+  setdiff(od$field[which(as)], b)
 }
 
 
