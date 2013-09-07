@@ -163,7 +163,7 @@ odessa.id <- function(x) attr(x,'odessa.id')
 which.bindings(a) %as% {
   binding <- get_binding(a@odessa.id)
   ms <- gregexpr(BINDING_TOKEN_REGEX, binding$format, perl=TRUE)
-  bs <- regmatches(binding$format, ms)[[1]]
+  bs <- sapply(regmatches(binding$format, ms), function(x) x)
   gsub('$','', bs, fixed=TRUE)
 }
 
