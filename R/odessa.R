@@ -37,12 +37,30 @@ package_list() %as% {
 #  o
 #}
 
-search_string(field) %as% sprintf('\\$%s|\\$\\{%s\\}', field, field)
+#' Generate a search string to match a binding token for the given
+#' field name.
+#'
+#' Used internally
+search_string(field) %as% search_string(field, 'short')
+search_string(field, 'short') %as% sprintf('\\$%s|\\$\\{%s\\}', field, field)
+search_string(field, 'long') %as% sprintf('\\$%s\\{[^\\}]+\\}', field)
+
+#' Construct a regex pattern that will specify the characters to be
+#' extracted for a binding.
+#'
+#' Used internally
+match_string(field, 'short', format) %as% '(.*)'
+match_string(field, 'long', format) %as% {
+  pattern <- sprintf('^.*\\$%s\\{([^\\}]+)\\}.*$', field)
+  sprintf('(%s)', sub(pattern, '\\1', format))
+}
+
 
 clean(x) %as% {
   gsub('\n', ' ', x, fixed=TRUE)
 }
 
+map.type(x, EMPTY) %as% x
 map.type(x, 'string') %as% as.character(x)
 map.type(x, 'integer') %as% as.integer(x)
 map.type(x, 'float') %as% as.numeric(x)
@@ -54,12 +72,23 @@ map.type(x, field) %as% {
   map.type(x, type)
 }
 
+#' Map the binding format to an actual value
 map.value(x, binding, field) %as% {
-  search.string <- search_string(field)
-  match.idx <- grep(search.string, binding$format)
-  regexes <- sub(search.string, '(.*)', binding$format[match.idx])
+  types <- c('long','short')
+  match.idx <- NA
+  f <- function(type) {
+    if (!is.na(match.idx)) return(NULL)
+    search.string <- search_string(field, type)
+    match.idx <- grep(search.string, binding$format)
+    if (length(match.idx) == 0) return(NULL)
+
+    match.idx <<- match.idx
+    match.string <- match_string(field, type, binding$format[match.idx])
+    sub(search.string, match.string, binding$format[match.idx])
+  }
+  regexes <- do.call(c, sapply(types, f))
   # Replace other $tokens with .*
-  regexes <- gsub(BINDING_TOKEN_REGEX, '.*', regexes, perl=TRUE)
+  regexes <- gsub(BINDING_REPLACE_REGEX, '.*', regexes, perl=TRUE)
   # Now remove everything but the matched token
   map.type(sub(regexes,'\\1', clean(x[,binding$field[match.idx]])), field)
 }
@@ -75,6 +104,7 @@ map.value(x, binding, field, path) %as% {
   map.value(x, binding, field, path[-1])
 }
 
+#' Find the ancestors for the given field.
 # This is causing problems:
 # a <- fetch('nyc-energy-consumption-2010')
 # binding.for(head(a), 'location')
@@ -98,8 +128,16 @@ map.ancestor(x, field) %as% {
   fold(fn, which.bindings(x), rep(template,nrow(x)))
 }
 
-# 4 If match then find parent and search until match or terminate
-# 5 Keep track of graph so each format can be applied
+#' Generate the values associated for the given field name. These
+#' are the actual values that will be used to join with another
+#' dataset.
+#'
+#' This is primarily used internally, but it can be useful for 
+#' debugging to see what values are being generated.
+#' 
+#' @examples
+#' a <- fetch('datetime-1')
+#' binding.for(a,'date')
 binding.for(x, field) %as% {
   direct <- which.bindings(x)
   binding.for(x, field, direct)
@@ -164,7 +202,7 @@ which.bindings(a) %as% {
   binding <- get_binding(a@odessa.id)
   ms <- gregexpr(BINDING_TOKEN_REGEX, binding$format, perl=TRUE)
   bs <- sapply(regmatches(binding$format, ms), function(x) x)
-  gsub('$','', bs, fixed=TRUE)
+  gsub('$','', as.vector(bs), fixed=TRUE)
 }
 
 #' Check if any bindings can be derived via the odessa graph

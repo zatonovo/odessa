@@ -1,5 +1,6 @@
 # :vim set filetype=R
-BINDING_TOKEN_REGEX <- '\\$\\w+|\\$\\{\\w\\}+'
+BINDING_TOKEN_REGEX <- '\\$\\w+|\\$\\{\\w+\\}'
+BINDING_REPLACE_REGEX <- '\\$\\w+\\{[^\\}]+\\}|\\$\\w+|\\$\\{\\w+\\}'
 
 fold(f, EMPTY , acc) %as% acc
 fold(f, x, acc) %when% { is.null(dim(x)) } %as% fold(f, x[-1], f(x[[1]], acc))
