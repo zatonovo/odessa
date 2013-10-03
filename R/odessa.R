@@ -138,11 +138,18 @@ map.ancestor(x, field) %as% {
 #' @examples
 #' a <- fetch('datetime-1')
 #' binding.for(a,'date')
+binding.for(x, field) %when% {
+  field %in% colnames(x)
+} %as% {
+  x[,field]
+}
+
 binding.for(x, field) %as% {
   direct <- which.bindings(x)
   binding.for(x, field, direct)
 }
 
+# Use bindings defined directly in dataset
 binding.for(x, field, direct) %when% {
   field %in% direct
 } %as% {
@@ -150,6 +157,7 @@ binding.for(x, field, direct) %when% {
   map.value(x, binding, field)
 }
 
+# Search the Odessa graph
 binding.for(x, field, direct) %as% {
   binding <- get_binding(x@odessa.id)
   graph <- field.graph(field)
@@ -202,6 +210,7 @@ which.bindings(a) %as% {
   binding <- get_binding(a@odessa.id)
   ms <- gregexpr(BINDING_TOKEN_REGEX, binding$format, perl=TRUE)
   bs <- sapply(regmatches(binding$format, ms), function(x) x)
+  if (is.list(bs)) bs <- do.call(c, bs)
   gsub('$','', as.vector(bs), fixed=TRUE)
 }
 
@@ -220,6 +229,17 @@ which.ancestors(a) %as% {
 }
 
 
+#' TODO: Data types in binding files for automatic conversion (default string)
+#' TODO: Automatic join column based on lcd (where possible)
+#' TODO: Composite joins (over multiple datasets n > 2)
+#' fold(c('id1','id2','id3'), conjoin)
+
+conjoin(a,b) %as% {
+  abs <- which.bindings(a)
+  bbs <- which.bindings(b)
+}
+
+#'
 #' @example
 #' df1 <- fetch('vbts-zqt4')
 #' odessa.id(df1) <- 'vbts-zqt4.binding.csv'
@@ -229,6 +249,32 @@ which.ancestors(a) %as% {
 conjoin(a,b, field, ...) %as% {
   key.a <- sapply(field, function(f) binding.for(a, f))
   key.b <- sapply(field, function(f) binding.for(b, f))
-  key.names <- ifelse(length(field) > 1, paste('odessa.key',field, sep='.'), field)
-  merge(cbind(odessa.key=key.a,a), cbind(odessa.key=key.b,b), by=key.names, ...)
+  #key.names <- ifelse(length(field) > 1, paste('odessa.key',field, sep='.'), field)
+  key.names <- paste('odessa.key',field, sep='.')
+  anynames(key.a) <- anynames(key.b) <- key.names
+  o <- merge(cbind(key.a,a), cbind(key.b,b), by=key.names, ...)
+  o@odessa.id <- a@odessa.id
+  o
+}
+
+
+example.1 <- function() {
+  a <- fetch('nyc-sat-results-2010')
+  b <- fetch('nyc-school-district-demographics')
+  i <- fetch('nyc-school-district-index')
+  y <- conjoin(a,i, 'borough')
+  z <- conjoin(y,b, c('district','borough_name'))
+  z <- z[z$Number.of.Test.Takers!='s',]
+  z$Number.of.Test.Takers <- as.numeric(z$Number.of.Test.Takers)
+  z$Critical.Reading.Mean <- as.numeric(z$Critical.Reading.Mean)
+
+  fn <- function(df) {
+    count <- sum(df$Number.of.Test.Takers)
+    reading <- sum(df$Number.of.Test.Takers * df$Critical.Reading.Mean) / count
+    male <- df$PERCENT.MALE[1]
+    female <- df$PERCENT.FEMALE[1]
+    data.frame(count, reading, male, female) 
+  }
+  z1 <- ddply(z, .(odessa.key.district, odessa.key.borough), fn)
+
 }

@@ -92,6 +92,22 @@ get_binding(id) %as% {
   package$binding
 }
 
+#' Update a binding
+#'
+#' Only use for dataset development
+set_binding(id, binding) %as% {
+  package <- odessa.options(id)
+  if (is.null(package)) stop("Package was not downloaded")
+
+  package$binding <- binding
+  updateOptions(odessa.options, id,package)
+}
+
+
+#' Register a transform to a dataset. This is not portable so is
+#' generally discouraged. 
+get_transform(id) %as% { }
+
 #get_binding(id) %when% {
 #  length(grep('odessa://', id, fixed=TRUE)) == 0
 #} %as% {
