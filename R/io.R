@@ -1,9 +1,13 @@
 # :vim set filetype=R
-BINDING_TOKEN_REGEX <- '\\$\\w+|\\$\\{\\w\\}+'
+BINDING_TOKEN_REGEX <- '\\$\\w+|\\$\\{\\w+\\}'
+BINDING_REPLACE_REGEX <- '\\$\\w+\\{[^\\}]+\\}|\\$\\w+|\\$\\{\\w+\\}'
 
 fold(f, EMPTY , acc) %as% acc
 fold(f, x, acc) %when% { is.null(dim(x)) } %as% fold(f, x[-1], f(x[[1]], acc))
 fold(f, x, acc) %as% fold(f, x[,-1,drop=FALSE], f(x[,1], acc))
+
+
+clean.format <- function(format) gsub('([()])', '\\\\\\1', format, perl=TRUE)
 
 .fetch_json(uri) %as% {
   conn <- url(uri)
@@ -38,16 +42,20 @@ get_data_uri(package) %::% Package : character
 get_data_uri(package) %as% {
   names <- sapply(package$result$resources, function(r) r$name)
   idx <- which(names=='data')
+  if (length(idx) == 0) return("")
   package$result$resources[[idx]]$url
 }
 
-Odessa(id) %as% {
+Odessa(id, fn=clean.format) %as% {
   package <- Package(id)
   data.uri <- get_data_uri(package)
   binding.uri <- get_binding_uri(package)
 
   conn <- textConnection(getURL(binding.uri))
   binding <- read.csv(conn, as.is=TRUE)
+  binding$field <- gsub(' ','.', binding$field, fixed=TRUE)
+  binding$format <- fn(binding$format)
+  close(conn)
   list(id=id, data.uri=data.uri, binding.uri=binding.uri, binding=binding)
 }
 
@@ -67,24 +75,13 @@ create_uri(id, format='csv', fields=NULL) %as% {
 # Electric consumption: https://data.cityofnewyork.us/Environment/Electric-Consumption-by-ZIP-Code-2010/74cu-ncm4
 
 odessa_graph() %as% {
-  map <- 'field,parent,type,format
-datetime,NA,datetime,${date}T$time
-date,datetime,date,$year-$month-$day
-time,datetime,datetime,$hour:$minute:$second.$microsecond
-season,NA,string,$season
-year,date,integer,$year
-month,date,integer,$month
-day,date,integer,$day
-hour,time,integer,$hour
-minute,time,integer,$minute
-second,time,float,$second
-postal_code,NA,string,$postal_code
-location,NA,string,"($latitude, $longitude)"
-latitude,location,float,$latitude
-longitude,location,float,$longitude
-'
-  map <- gsub('([()])', '\\\\\\1', map, perl=TRUE)
-  read.csv(textConnection(map), as.is=TRUE)
+  id <- 'odessa-binding'
+  package <- odessa.options(id)
+  if (is.null(package)) {
+    package <- Odessa(id)
+    updateOptions(odessa.options, id,package)
+  }
+  package$binding
 }
 
 #' A binding is what links a data set to the odessa standard
@@ -94,6 +91,22 @@ get_binding(id) %as% {
   if (is.null(package)) stop("Package was not downloaded")
   package$binding
 }
+
+#' Update a binding
+#'
+#' Only use for dataset development
+set_binding(id, binding) %as% {
+  package <- odessa.options(id)
+  if (is.null(package)) stop("Package was not downloaded")
+
+  package$binding <- binding
+  updateOptions(odessa.options, id,package)
+}
+
+
+#' Register a transform to a dataset. This is not portable so is
+#' generally discouraged. 
+get_transform(id) %as% { }
 
 #get_binding(id) %when% {
 #  length(grep('odessa://', id, fixed=TRUE)) == 0
