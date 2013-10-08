@@ -21,7 +21,9 @@ fetch(id, fn=clean.format, ...) %as% {
   o
 }
 
-package_list() %as% {
+#' Get the list of available packages
+#'
+package_list(search='') %as% {
   uri <- 'http://odessa.zatonovo.com/api/3/action/package_list'
   data <- .fetch_json(uri)
   data$result
@@ -178,11 +180,15 @@ field.graph(field, graph=odessa_graph(), acc=c()) %as% {
 }
 
 
-#' Get the lowest common denominator between two fields
+#' Find the nearest common ancestor
+#'
+#' Get the greatest common factor between two fields. This is 
+#' equivalent to finding the nearest ancestor.
+#'
 #' If empty an error is thrown
 #' If field.a %in% result || field.b %in% result, then return result
 #' Otherwise throw error (higher common link is not supported)
-lcd(field.a, field.b) %as% {
+gcf(field.a, field.b) %as% {
   graph.a <- field.graph(field.a)
   graph.b <- field.graph(field.b)
   intersection <- intersect(graph.a, graph.b)
@@ -193,10 +199,10 @@ lcd(field.a, field.b) %as% {
 
 field.path(field.a, field.b) %as% {
   fields <- c(field.a, field.b)
-  lcd <- lcd(field.a, field.b)
-  x <- fields[fields != lcd]
+  gcf <- gcf(field.a, field.b)
+  x <- fields[fields != gcf]
   g <- field.graph(x)
-  g[1:which(g == lcd)]
+  g[1:which(g == gcf)]
 }
 
 
@@ -230,7 +236,7 @@ which.ancestors(a) %as% {
 
 
 #' TODO: Data types in binding files for automatic conversion (default string)
-#' TODO: Automatic join column based on lcd (where possible)
+#' TODO: Automatic join column based on gcf (where possible)
 #' TODO: Composite joins (over multiple datasets n > 2)
 #' fold(c('id1','id2','id3'), conjoin)
 
