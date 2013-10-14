@@ -1,0 +1,20 @@
+Package: odessa
+Type: Package
+Title: ~~
+Version: 1.0.0
+Date: 2013-10-14
+Author: 
+Maintainer: 
+Imports:
+  lambda.r,
+  futile.options,
+  futile.logger,
+  RCurl,
+  RJSONIO
+Suggests:
+    testthat
+Description: ~~
+License: LGPL-3
+LazyLoad: yes
+Collate:
+

@@ -2,9 +2,113 @@
 BINDING_TOKEN_REGEX <- '\\$\\w+|\\$\\{\\w+\\}'
 BINDING_REPLACE_REGEX <- '\\$\\w+\\{[^\\}]+\\}|\\$\\w+|\\$\\{\\w+\\}'
 
-fold(f, EMPTY , acc) %as% acc
-fold(f, x, acc) %when% { is.null(dim(x)) } %as% fold(f, x[-1], f(x[[1]], acc))
-fold(f, x, acc) %as% fold(f, x[,-1,drop=FALSE], f(x[,1], acc))
+#' A type that represents a data package
+#'
+#' Every dataset in Odessa is a package containing the actual dataset
+#' and a binding file containing metadata.
+#'
+#' @section Usage:
+#' Package(id)
+#'
+#' @section Details:
+#'
+#' @name Package
+#' @export
+#' @param id The Odessa ID for the dataset
+#' @return A typed data.frame
+#'
+#' @author Brian Lee Yung Rowe
+#'
+Package(id) %as% {
+  uri <- .package_uri(id)
+  .fetch_json(uri)
+}
+
+#' A type that represents the Odessa binding information for a package
+#'
+#' Every dataset in Odessa is a package containing the actual dataset
+#' and a binding file containing metadata.
+#'
+#' @section Usage:
+#' Odessa(id, fn=clean.format)
+#'
+#' @section Details:
+#'
+#' @name Odessa
+#' @export
+#' @param id The Odessa ID for the dataset
+#' @param fn A function used to clean the data
+#' @return A typed data.frame
+#'
+#' @author Brian Lee Yung Rowe
+#'
+Odessa(id, fn=clean.format) %as% {
+  package <- Package(id)
+  data.uri <- get_data_uri(package)
+  binding.uri <- get_binding_uri(package)
+
+  conn <- textConnection(getURL(binding.uri))
+  binding <- read.csv(conn, as.is=TRUE)
+  binding$field <- gsub(' ','.', binding$field, fixed=TRUE)
+  binding$format <- fn(binding$format)
+  close(conn)
+  list(id=id, data.uri=data.uri, binding.uri=binding.uri, binding=binding)
+}
+
+
+#' Show the raw binding data for the given data package
+#'
+#' This function displays the raw binding data for examination.
+#' Typically it is not needed for casual use of the library.
+#'
+#' @section Usage:
+#' get_binding %::% character : a
+#' get_binding(id)
+#'
+#' @section Details:
+#' A binding is what links a data set to the Odessa standard.
+#' A data package can have multiple bindings. This function shows all
+#' the bindings explicitly registered for the package.
+#'
+#' @name get_binding
+#' @export
+#' @param id The Odessa ID for the dataset
+#' @return A data.frame containing the binding information
+#'
+#' @author Brian Lee Yung Rowe
+#'
+get_binding(id) %::% character : data.frame
+get_binding(id) %as% {
+  package <- odessa.options(id)
+  if (is.null(package)) stop("Package was not downloaded")
+  package$binding
+}
+
+#' Update the binding file for a package
+#'
+#' When developing a new data package, this is useful for verifying that
+#' a binding file works correctly by updating a binding file locally.
+#'
+#' @section Usage:
+#' set_binding(id, binding)
+#'
+#' @section Details:
+#' Only use for dataset development
+#'
+#' @name set_binding
+#' @export
+#' @param id The Odessa ID for the dataset
+#' @param binding A data.frame that represents the binding data
+#'
+#' @author Brian Lee Yung Rowe
+#'
+set_binding(id, binding) %as% {
+  package <- odessa.options(id)
+  if (is.null(package)) stop("Package was not downloaded")
+
+  package$binding <- binding
+  updateOptions(odessa.options, id,package)
+}
 
 
 clean.format <- function(format) gsub('([()])', '\\\\\\1', format, perl=TRUE)
@@ -26,11 +130,6 @@ clean.format <- function(format) gsub('([()])', '\\\\\\1', format, perl=TRUE)
   uri
 }
 
-Package(id) %as% {
-  uri <- .package_uri(id)
-  .fetch_json(uri)
-}
-
 get_binding_uri(package) %::% Package : character
 get_binding_uri(package) %as% {
   names <- sapply(package$result$resources, function(r) r$name)
@@ -46,23 +145,10 @@ get_data_uri(package) %as% {
   package$result$resources[[idx]]$url
 }
 
-Odessa(id, fn=clean.format) %as% {
-  package <- Package(id)
-  data.uri <- get_data_uri(package)
-  binding.uri <- get_binding_uri(package)
-
-  conn <- textConnection(getURL(binding.uri))
-  binding <- read.csv(conn, as.is=TRUE)
-  binding$field <- gsub(' ','.', binding$field, fixed=TRUE)
-  binding$format <- fn(binding$format)
-  close(conn)
-  list(id=id, data.uri=data.uri, binding.uri=binding.uri, binding=binding)
-}
-
 
 # OBSOLETE
-#' @example
-#' create_uri('electric-consumption')
+# @example
+# create_uri('electric-consumption')
 create_uri(id, format='csv', fields=NULL) %as% {
   base <- "https://data.cityofchicago.org/resource"
   resource <- paste(id, format, sep='.')
@@ -84,38 +170,7 @@ odessa_graph() %as% {
   package$binding
 }
 
-#' A binding is what links a data set to the odessa standard
-get_binding(id) %::% character : a
-get_binding(id) %as% {
-  package <- odessa.options(id)
-  if (is.null(package)) stop("Package was not downloaded")
-  package$binding
-}
-
-#' Update a binding
-#'
-#' Only use for dataset development
-set_binding(id, binding) %as% {
-  package <- odessa.options(id)
-  if (is.null(package)) stop("Package was not downloaded")
-
-  package$binding <- binding
-  updateOptions(odessa.options, id,package)
-}
-
-
-#' Register a transform to a dataset. This is not portable so is
-#' generally discouraged. 
+# Register a transform to a dataset. This is not portable so is
+# generally discouraged. 
 get_transform(id) %as% { }
-
-#get_binding(id) %when% {
-#  length(grep('odessa://', id, fixed=TRUE)) == 0
-#} %as% {
-#  read.csv(id, as.is=TRUE)
-#}
-
-#get_binding(id) %as% {
-#  uri <- paste('http://',id, sep='')
-#  read.csv(uri, as.is=TRUE)
-#}
 
