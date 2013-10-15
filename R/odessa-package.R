@@ -1,5 +1,5 @@
 # :vim set filetype=R
-#' Effortless data analysis
+#' A library that uses graph inference to effortlessly join datasets together
 #'
 #' Odessa is a platform and library that eliminates the headaches
 #' associated with data cleaning and munging. With Odessa you can
@@ -18,8 +18,8 @@
 #' @name odessa-package
 #' @aliases odessa-package odessa
 #' @docType package
-#' @import lambda.r futile.options futile.logger RCurl RJSONIO
+#' @import lambda.r lambda.tools futile.options futile.logger RCurl RJSONIO
 #' @author Brian Lee Yung Rowe <r@@zatonovo.com>
-#' @seealso \code{\link{lambda.tools}}
+#' @seealso \code{lambda.tools}
 #' @keywords package
 NULL

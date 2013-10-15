@@ -1,20 +1,28 @@
 Package: odessa
 Type: Package
-Title: ~~
+Title: A library that uses graph inference to effortlessly join datasets
+    together
 Version: 1.0.0
 Date: 2013-10-14
-Author: 
-Maintainer: 
+Author: Brian Lee Yung Rowe
+Maintainer: Brian Lee Yung Rowe <r@zatonovo.com>
 Imports:
-  lambda.r,
-  futile.options,
-  futile.logger,
-  RCurl,
-  RJSONIO
+    lambda.r,
+    lambda.tools,
+    futile.options,
+    futile.logger,
+    RCurl,
+    RJSONIO
 Suggests:
     testthat
-Description: ~~
+Description: Odessa is a platform and library that eliminates the headaches
+    associated with data cleaning and munging. With Odessa you can
+    focus on the task of analyzing and modeling data and not
+    wrestling with data.
 License: LGPL-3
 LazyLoad: yes
 Collate:
-
+    'a.R'
+    'client.R'
+    'io.R'
+    'odessa-package.R'

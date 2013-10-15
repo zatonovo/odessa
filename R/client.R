@@ -9,8 +9,10 @@
 #' fetch(id, fn=clean.format, ...)
 #'
 #' @section Details:
+#' Datasets can be retrieved from the Odessa platform or locally.
 #'
 #' @name fetch
+#' @aliases clean.format
 #' @export
 #' @param id The ID of the data on Odessa
 #' @param fn A function to preprocess the data with
@@ -21,30 +23,35 @@
 #' @seealso \code{\link{package_list}}
 #'
 #' @examples
+#' \dontrun{
+#' # Get remote data
 #' geo1 <- fetch('geolocation-1')
 #' geo2 <- fetch('geolocation-2')
-#' z <- conjoin(geo1, geo2, 'location')
+#' gg <- conjoin(geo1, geo2, 'location')
+#' }
+#'
+#' # Get soem local data
+#' p1 <- paste(system.file('extdata', package='odessa'), 'date1', sep='/')
+#' p2 <- paste(system.file('extdata', package='odessa'), 'date2', sep='/')
+#' date1 <- fetch(p1)
+#' date2 <- fetch(p2)
+#' dd <- conjoin(date1,date2, c('year','month'))
 fetch(id, fn=clean.format, ...) %as% {
-  package <- odessa.options(id)
+  real.id <- id_from_path(id)
+  package <- odessa.options(real.id)
   if (is.null(package)) {
     package <- Odessa(id, fn)
-    updateOptions(odessa.options, id,package)
+    updateOptions(odessa.options, real.id, package)
   }
-  z <- textConnection(getURL(package$data.uri))
-  o <- read.csv(z, ..., as.is=TRUE)
+  flog.info("Loading dataset from %s", path)
+  o <- read.csv(path, ..., as.is=TRUE)
   o@odessa.id <- package$id
   o
 }
 
-#fetch(id, format='csv', fields=NULL, ...) %when% {
-#  length(grep('://',id, fixed=TRUE)) > 0
-#} %as% {
-#  z <- paste(id,'csv', sep='.')
-#  flog.info("Reading local file %s",z)
-#  o <- read.csv(z, ..., as.is=TRUE)
-#  o@odessa.id <- paste(id,'binding.csv', sep='.')
-#  o
-#}
+
+#' @export
+clean.format <- function(format) gsub('([()])', '\\\\\\1', format, perl=TRUE)
 
 
 #' Get the list of available packages
@@ -56,6 +63,11 @@ fetch(id, fn=clean.format, ...) %as% {
 #' package_list(tag='', group='')
 #'
 #' @section Details:
+#' As Odessa is a shared repository, there needs to be a convenient
+#' way to find data on the platform. This function is an in-session
+#' mechanism to search Odessa's online indices.
+#'
+#' @note No search capability is currently available.
 #'
 #' @name package_list
 #' @export
@@ -73,7 +85,7 @@ package_list(tag='', group='') %as% {
 }
 
 
-#' Generate the values associated for the given field name. These
+#' Generate the index associated for the given field name. These
 #' are the actual values that will be used to join with another
 #' dataset.
 #'
@@ -84,6 +96,9 @@ package_list(tag='', group='') %as% {
 #' binding.for(x, field)
 #'
 #' @section Details:
+#' A binding is the essence of what Odessa provides. Bindings are 
+#' generated indices based on construction rules and graph-based
+#' inference rules.
 #'
 #' @name binding.for
 #' @export
@@ -94,8 +109,10 @@ package_list(tag='', group='') %as% {
 #' @author Brian Lee Yung Rowe
 #'
 #' @examples
-#' a <- fetch('datetime-1')
+#' \dontrun{
+#' a <- fetch('tutorial-datetime-1')
 #' binding.for(a,'date')
+#' }
 binding.for(x, field) %when% {
   field %in% colnames(x)
 } %as% {
@@ -211,7 +228,7 @@ map.ancestor(x, field) %as% {
   }
   #template <- gsub('[\\\\/]','', od[od$field==ancestor,'format'], perl=TRUE)
   template <- od[od$field==ancestor,'format']
-  fold(fn, which.bindings(x), rep(template,nrow(x)))
+  fold(which.bindings(x), fn, rep(template,nrow(x)))
 }
 
 field.graph(NA, graph, acc) %as% acc
@@ -256,6 +273,14 @@ odessa.id <- function(x) attr(x,'odessa.id')
 }
 
 #' Find the available bindings for a data package
+#'
+#' @name which.bindings
+#' @export
+#' @param a An Odessa dataset
+#' @return A character vector with all available bindings
+#'
+#' @author Brian Lee Yung Rowe
+#'
 which.bindings(a) %as% {
   binding <- get_binding(a@odessa.id)
   ms <- gregexpr(BINDING_TOKEN_REGEX, binding$format, perl=TRUE)
@@ -265,6 +290,14 @@ which.bindings(a) %as% {
 }
 
 #' Check if any bindings can be derived via the odessa graph
+#'
+#' @name which.ancestors
+#' @export
+#' @param a An Odessa dataset
+#' @return A character vector with all available ancestors
+#'
+#' @author Brian Lee Yung Rowe
+#'
 which.ancestors(a) %as% {
   b <- which.bindings(a)
   od <- odessa_graph()
@@ -291,8 +324,14 @@ which.ancestors(a) %as% {
 #' greatest common factor based on the graph of each index.
 #'
 #' @section Usage:
+#' conjoin(a,b, field, ...)
 #'
 #' @section Details:
+#' The power of Odessa is in being able to join datasets together
+#' without a lot of ceremony. Data that has been fetched via Odessa 
+#' can be joined via their bindings. The ideal situation is that
+#' compatible bindings are inferred from the metadata and master
+#' graphs. Currently you have to specify the binding.
 #'
 #' @name conjoin
 #' @export
@@ -314,6 +353,7 @@ which.ancestors(a) %as% {
 conjoin(a,b) %as% {
   abs <- which.bindings(a)
   bbs <- which.bindings(b)
+  stop("Incomplete")
 }
 
 conjoin(a,b, field, ...) %as% {

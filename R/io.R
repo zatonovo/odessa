@@ -8,18 +8,19 @@ BINDING_REPLACE_REGEX <- '\\$\\w+\\{[^\\}]+\\}|\\$\\w+|\\$\\{\\w+\\}'
 #' and a binding file containing metadata.
 #'
 #' @section Usage:
-#' Package(id)
+#' PackageDescriptor(id)
 #'
 #' @section Details:
+#' This is the CKAN package information
 #'
-#' @name Package
+#' @name PackageDescriptor
 #' @export
 #' @param id The Odessa ID for the dataset
 #' @return A typed data.frame
 #'
 #' @author Brian Lee Yung Rowe
 #'
-Package(id) %as% {
+PackageDescriptor(id) %as% {
   uri <- .package_uri(id)
   .fetch_json(uri)
 }
@@ -33,17 +34,33 @@ Package(id) %as% {
 #' Odessa(id, fn=clean.format)
 #'
 #' @section Details:
+#' An end user generally doesn't need to work directly with an Odessa
+#' object.
 #'
 #' @name Odessa
 #' @export
 #' @param id The Odessa ID for the dataset
+#' @param path A local file path that ends in the id of the dataset
 #' @param fn A function used to clean the data
 #' @return A typed data.frame
 #'
 #' @author Brian Lee Yung Rowe
 #'
+Odessa(path, fn=clean.format) %when% {
+  grepl('[/\\]', path)
+} %as% {
+  id <- id_from_path(path)
+  data.uri <- paste(path,'csv', sep='.')
+  binding.uri <- paste(path,'binding','csv', sep='.')
+
+  binding <- read.csv(binding.uri, as.is=TRUE)
+  binding$field <- gsub(' ','.', binding$field, fixed=TRUE)
+  binding$format <- fn(binding$format)
+  list(id=id, data.uri=data.uri, binding.uri=binding.uri, binding=binding)
+}
+
 Odessa(id, fn=clean.format) %as% {
-  package <- Package(id)
+  package <- PackageDescriptor(id)
   data.uri <- get_data_uri(package)
   binding.uri <- get_binding_uri(package)
 
@@ -55,6 +72,9 @@ Odessa(id, fn=clean.format) %as% {
   list(id=id, data.uri=data.uri, binding.uri=binding.uri, binding=binding)
 }
 
+id_from_path(path) %when% { is.scalar(path) } %as% {
+  tail(strsplit(path,'[/\\]')[[1]],1)
+}
 
 #' Show the raw binding data for the given data package
 #'
@@ -111,8 +131,6 @@ set_binding(id, binding) %as% {
 }
 
 
-clean.format <- function(format) gsub('([()])', '\\\\\\1', format, perl=TRUE)
-
 .fetch_json(uri) %as% {
   conn <- url(uri)
   #hand <- function(e)
@@ -130,14 +148,14 @@ clean.format <- function(format) gsub('([()])', '\\\\\\1', format, perl=TRUE)
   uri
 }
 
-get_binding_uri(package) %::% Package : character
+get_binding_uri(package) %::% PackageDescriptor : character
 get_binding_uri(package) %as% {
   names <- sapply(package$result$resources, function(r) r$name)
   idx <- which(names=='binding')
   package$result$resources[[idx]]$url
 }
 
-get_data_uri(package) %::% Package : character
+get_data_uri(package) %::% PackageDescriptor : character
 get_data_uri(package) %as% {
   names <- sapply(package$result$resources, function(r) r$name)
   idx <- which(names=='data')
@@ -160,6 +178,11 @@ create_uri(id, format='csv', fields=NULL) %as% {
 # Wi-Fi: https://data.cityofnewyork.us/Recreation/Wifi-Hotspot-Locations/ehc4-fktp
 # Electric consumption: https://data.cityofnewyork.us/Environment/Electric-Consumption-by-ZIP-Code-2010/74cu-ncm4
 
+#' Get the master binding graph of Odessa
+#'
+#' @name odessa_graph
+#' @export
+#' @return The master binding graph of Odessa itself
 odessa_graph() %as% {
   id <- 'odessa-binding'
   package <- odessa.options(id)
@@ -172,5 +195,5 @@ odessa_graph() %as% {
 
 # Register a transform to a dataset. This is not portable so is
 # generally discouraged. 
-get_transform(id) %as% { }
+#get_transform(id) %as% { }
 
