@@ -109,6 +109,15 @@ This is almost too easy. That's the idea.
 ### More to come
 Pending
 
+Installation
+============
+The Odessa R package is not yet published to CRAN, so you must install
+via github.
+```R
+library(devtools)
+install_github('odessa','zatonovo')
+```
+
 Other Examples
 ==============
 ```R
