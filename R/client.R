@@ -30,9 +30,10 @@
 #' gg <- conjoin(geo1, geo2, 'location')
 #' }
 #'
-#' # Get soem local data
-#' p1 <- paste(system.file('extdata', package='odessa'), 'date1', sep='/')
-#' p2 <- paste(system.file('extdata', package='odessa'), 'date2', sep='/')
+#' # Get some local data
+#' base <- system.file('extdata',package='odessa')
+#' p1 <- paste("file:/", base, 'date1', sep='/')
+#' p2 <- paste("file:/", base, 'date2', sep='/')
 #' date1 <- fetch(p1)
 #' date2 <- fetch(p2)
 #' dd <- conjoin(date1,date2, c('year','month'))
@@ -43,13 +44,16 @@ fetch(id, fn=clean.format, ...) %as% {
     package <- Odessa(id, fn)
     updateOptions(odessa.options, real.id, package)
   }
-  flog.info("Loading dataset from %s", path)
-  o <- read.csv(path, ..., as.is=TRUE)
+  flog.info("Loading dataset from %s", package$data.uri)
+  o <- read.csv(package$data.uri, ..., as.is=TRUE)
   o@odessa.id <- package$id
   o
 }
 
 
+
+# Escapes parentheses in the format column
+#
 #' @export
 clean.format <- function(format) gsub('([()])', '\\\\\\1', format, perl=TRUE)
 
@@ -129,18 +133,21 @@ binding.for(x, field, direct) %when% {
   field %in% direct
 } %as% {
   binding <- get_binding(x@odessa.id)
-  map.value(x, binding, field)
+  out <- map.value(x, binding, field)
+  gsub('\\','', out, fixed=TRUE)
 }
 
 # Search the Odessa graph
 binding.for(x, field, direct) %as% {
   binding <- get_binding(x@odessa.id)
   graph <- field.graph(field)
-  if (length(intersect(graph, direct)) < 1)
-    return(map.ancestor(x, field))
-
-  node <- which(direct == graph)
-  map.value(x, binding, field, rev(graph[2:node]))
+  if (length(intersect(graph, direct)) < 1) {
+    out <- map.ancestor(x, field)
+  } else {
+    node <- which(direct == graph)
+    out <- map.value(x, binding, field, rev(graph[2:node]))
+  }
+  gsub('\\','', out, fixed=TRUE)
 }
 
 

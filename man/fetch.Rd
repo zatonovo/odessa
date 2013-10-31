@@ -29,12 +29,13 @@
 # Get remote data
 geo1 <- fetch('geolocation-1')
 geo2 <- fetch('geolocation-2')
-z <- conjoin(geo1, geo2, 'location')
+gg <- conjoin(geo1, geo2, 'location')
 }
 
-# Get soem local data
-p1 <- paste(system.file('extdata', package='odessa'), 'date1', sep='/')
-p2 <- paste(system.file('extdata', package='odessa'), 'date2', sep='/')
+# Get some local data
+base <- system.file('extdata',package='odessa')
+p1 <- paste("file:/", base, 'date1', sep='/')
+p2 <- paste("file:/", base, 'date2', sep='/')
 date1 <- fetch(p1)
 date2 <- fetch(p2)
 dd <- conjoin(date1,date2, c('year','month'))

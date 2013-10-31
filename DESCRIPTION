@@ -26,3 +26,4 @@ Collate:
     'client.R'
     'io.R'
     'odessa-package.R'
+    'denormalize.R'

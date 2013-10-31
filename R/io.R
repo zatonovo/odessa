@@ -47,7 +47,7 @@ PackageDescriptor(id) %as% {
 #' @author Brian Lee Yung Rowe
 #'
 Odessa(path, fn=clean.format) %when% {
-  grepl('[/\\]', path)
+  grepl('^file:', path)
 } %as% {
   id <- id_from_path(path)
   data.uri <- paste(path,'csv', sep='.')
@@ -73,7 +73,8 @@ Odessa(id, fn=clean.format) %as% {
 }
 
 id_from_path(path) %when% { is.scalar(path) } %as% {
-  tail(strsplit(path,'[/\\]')[[1]],1)
+  id <- tail(strsplit(path,'[/\\]')[[1]],1)
+  sub(".csv$","", id)
 }
 
 #' Show the raw binding data for the given data package
@@ -137,7 +138,7 @@ set_binding(id, binding) %as% {
   #  flog.error("Unable to find package named %s. Does it exist?", id)
   json <- readLines(conn, warn=FALSE)
   close(conn)
-  fromJSON(json)
+  fromJSON(paste(json, collapse=' '))
 }
 
 
