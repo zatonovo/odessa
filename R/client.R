@@ -28,7 +28,6 @@
 #' geo1 <- fetch('geolocation-1')
 #' geo2 <- fetch('geolocation-2')
 #' gg <- conjoin(geo1, geo2, 'location')
-#' }
 #'
 #' # Get some local data
 #' base <- system.file('extdata',package='odessa')
@@ -37,15 +36,21 @@
 #' date1 <- fetch(p1)
 #' date2 <- fetch(p2)
 #' dd <- conjoin(date1,date2, c('year','month'))
-fetch(id, fn=clean.format, ...) %as% {
+#' }
+fetch(id, ..., fn=clean.format) %as% {
   real.id <- id_from_path(id)
   package <- odessa.options(real.id)
   if (is.null(package)) {
     package <- Odessa(id, fn)
     updateOptions(odessa.options, real.id, package)
   }
+  uri <- construct_query(package$data.uri, ...)
   flog.info("Loading dataset from %s", package$data.uri)
-  o <- read.csv(package$data.uri, ..., as.is=TRUE)
+  if (package$data.format == 'csv') {
+    o <- read.csv(uri, as.is=TRUE)
+  } else {
+    o <- fetch_json(uri)
+  }
   o@odessa.id <- package$id
   o
 }
@@ -57,6 +62,12 @@ fetch(id, fn=clean.format, ...) %as% {
 #' @export
 clean.format <- function(format) gsub('([()])', '\\\\\\1', format, perl=TRUE)
 
+construct_query <- function(uri, ...) {
+  ps <- list(...)
+  qs <- sprintf("%s=%s", names(ps),
+    sapply(ps, function(x) URLencode(as.character(x))))
+  sprintf("%s?%s", uri, paste(qs, collapse="&"))
+}
 
 #' Get the list of available packages
 #'

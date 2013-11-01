@@ -18,7 +18,7 @@
 #' @name odessa-package
 #' @aliases odessa-package odessa
 #' @docType package
-#' @import lambda.r lambda.tools futile.options futile.logger RCurl RJSONIO
+#' @import lambda.r lambda.tools futile.options futile.logger RCurl RJSONIO plyr
 #' @author Brian Lee Yung Rowe <r@@zatonovo.com>
 #' @seealso \code{lambda.tools}
 #' @keywords package

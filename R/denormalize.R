@@ -6,6 +6,7 @@
 #' @param o A list representation of a JSON object
 #' @param keep Only output these columns
 #' @param drop Output everything but these columns
+#' @export
 # denormalize(z$objects)
 denormalize(o, keep, drop) %::% list : . : . : data.frame
 denormalize(o, keep=NULL, drop=NULL) %as% {
@@ -14,7 +15,9 @@ denormalize(o, keep=NULL, drop=NULL) %as% {
     function(x) x[,colnames(x) %in% keep, drop=FALSE], out)
   out <- onlyif(!is.null(drop),
     function(x) x[,!colnames(x) %in% drop, drop=FALSE], out)
-  unique(out)
+  out <- unique(out)
+  onlyif(! is.null(o@odessa.id), 
+    function(x) { x@odessa.id <- o@odessa.id; x }, out)
 }
 
 .denormalize <- function(o) {

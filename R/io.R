@@ -22,7 +22,7 @@ BINDING_REPLACE_REGEX <- '\\$\\w+\\{[^\\}]+\\}|\\$\\w+|\\$\\{\\w+\\}'
 #'
 PackageDescriptor(id) %as% {
   uri <- .package_uri(id)
-  .fetch_json(uri)
+  fetch_json(uri)
 }
 
 #' A type that represents the Odessa binding information for a package
@@ -56,7 +56,8 @@ Odessa(path, fn=clean.format) %when% {
   binding <- read.csv(binding.uri, as.is=TRUE)
   binding$field <- gsub(' ','.', binding$field, fixed=TRUE)
   binding$format <- fn(binding$format)
-  list(id=id, data.uri=data.uri, binding.uri=binding.uri, binding=binding)
+  list(id=id, data.format='csv', data.uri=data.uri,
+       binding.uri=binding.uri, binding=binding)
 }
 
 Odessa(id, fn=clean.format) %as% {
@@ -69,7 +70,14 @@ Odessa(id, fn=clean.format) %as% {
   binding$field <- gsub(' ','.', binding$field, fixed=TRUE)
   binding$format <- fn(binding$format)
   close(conn)
-  list(id=id, data.uri=data.uri, binding.uri=binding.uri, binding=binding)
+  list(id=id, data.format=data_format(package), data.uri=data.uri,
+       binding.uri=binding.uri, binding=binding)
+}
+
+data_format <- function(package) {
+  n <- sapply(package$result$resources, function(x) x$name)
+  idx <- which(n == 'data')
+  tolower(package$result$resources[[idx]]$format)
 }
 
 id_from_path(path) %when% { is.scalar(path) } %as% {
@@ -132,7 +140,7 @@ set_binding(id, binding) %as% {
 }
 
 
-.fetch_json(uri) %as% {
+fetch_json(uri) %as% {
   conn <- url(uri)
   #hand <- function(e)
   #  flog.error("Unable to find package named %s. Does it exist?", id)

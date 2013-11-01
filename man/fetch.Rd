@@ -30,7 +30,6 @@
 geo1 <- fetch('geolocation-1')
 geo2 <- fetch('geolocation-2')
 gg <- conjoin(geo1, geo2, 'location')
-}
 
 # Get some local data
 base <- system.file('extdata',package='odessa')
@@ -39,6 +38,7 @@ p2 <- paste("file:/", base, 'date2', sep='/')
 date1 <- fetch(p1)
 date2 <- fetch(p2)
 dd <- conjoin(date1,date2, c('year','month'))
+}
 }
 \author{
   Brian Lee Yung Rowe

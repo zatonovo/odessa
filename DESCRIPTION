@@ -12,7 +12,8 @@ Imports:
     futile.options,
     futile.logger,
     RCurl,
-    RJSONIO
+    RJSONIO,
+    plyr
 Suggests:
     testthat
 Description: Odessa is a platform and library that eliminates the headaches
