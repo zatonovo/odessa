@@ -45,7 +45,7 @@ fetch(id, ..., fn=clean.format) %as% {
     updateOptions(odessa.options, real.id, package)
   }
   uri <- construct_query(package$data.uri, ...)
-  flog.info("Loading dataset from %s", package$data.uri)
+  flog.info("Loading dataset from %s", uri)
   if (package$data.format == 'csv') {
     o <- read.csv(uri, as.is=TRUE)
   } else {
