@@ -22,7 +22,7 @@ BINDING_REPLACE_REGEX <- '\\$\\w+\\{[^\\}]+\\}|\\$\\w+|\\$\\{\\w+\\}'
 #'
 PackageDescriptor(id) %as% {
   uri <- .package_uri(id)
-  fetch_json(uri)
+  fetch_data(uri, 'json')
 }
 
 #' A type that represents the Odessa binding information for a package
@@ -140,13 +140,19 @@ set_binding(id, binding) %as% {
 }
 
 
-fetch_json(uri) %as% {
-  conn <- url(uri)
+fetch_data(uri, 'csv', ...) %as% {
+  text <- getURL(uri, ...)
+  read.csv(text, as.is=TRUE)
+}
+
+fetch_data(uri, 'json', ...) %as% {
+  #conn <- url(uri)
   #hand <- function(e)
   #  flog.error("Unable to find package named %s. Does it exist?", id)
-  json <- readLines(conn, warn=FALSE)
-  close(conn)
-  fromJSON(paste(json, collapse=' '))
+  #json <- readLines(conn, warn=FALSE)
+  #close(conn)
+  text <- getURL(uri, ...)
+  fromJSON(paste(text, collapse=' '))
 }
 
 

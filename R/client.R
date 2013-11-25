@@ -46,11 +46,7 @@ fetch(id, ..., fn=clean.format) %as% {
   }
   uri <- construct_query(package$data.uri, ...)
   flog.info("Loading dataset from %s", uri)
-  if (package$data.format == 'csv') {
-    o <- read.csv(uri, as.is=TRUE)
-  } else {
-    o <- fetch_json(uri)
-  }
+  o <- fetch_data(uri, package$data.format)
   o@odessa.id <- package$id
   o
 }

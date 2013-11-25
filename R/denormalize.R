@@ -21,9 +21,11 @@ denormalize(o, keep=NULL, drop=NULL) %as% {
 }
 
 .denormalize <- function(o) {
-  o <- o[sapply(o, function(x) !is.null(x))]
-  idx <- sapply(o, function(x) is.list(x) && length(x) > 1)
+  o <- o[sapply(o, function(x) !is.null(x) && length(x) > 0)]
+  if (length(o) == 0) return(NULL)
+
+  idx <- sapply(o, function(x) is.list(x))
   d <- o[!idx]
-  out <- c(d, lapply(o[idx], function(x) .denormalize(x)))
+  out <- c(d, do.call(c, lapply(o[idx], function(x) .denormalize(x))))
   out
 }
