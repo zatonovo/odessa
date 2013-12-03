@@ -37,20 +37,24 @@
 #' date2 <- fetch(p2)
 #' dd <- conjoin(date1,date2, c('year','month'))
 #' }
-fetch(id, ..., fn=clean.format) %as% {
+fetch(id, ..., fn=clean.format, fetch.fn=NULL) %as% {
   real.id <- id_from_path(id)
   package <- odessa.options(real.id)
   if (is.null(package)) {
     package <- Odessa(id, fn)
     updateOptions(odessa.options, real.id, package)
   }
-  uri <- construct_query(package$data.uri, ...)
-  flog.info("Loading dataset from %s", uri)
-  o <- fetch_data(uri, package$data.format)
+  if (is.null(fetch.fn)) {
+    uri <- construct_query(package$data.uri, ...)
+    flog.info("Loading dataset from %s", uri)
+    o <- fetch_data(uri, package$data.format)
+  } else {
+    flog.info("Downloading using external fetch function")
+    o <- fetch.fn(...)
+  }
   o@odessa.id <- package$id
   o
 }
-
 
 
 # Escapes parentheses in the format column
