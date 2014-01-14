@@ -211,7 +211,9 @@ map.value(x, binding, field) %as% {
   # Replace other $tokens with .*
   regexes <- gsub(BINDING_REPLACE_REGEX, '.*', regexes, perl=TRUE)
   # Now remove everything but the matched token
-  map.type(sub(regexes,'\\1', clean(x[,binding$field[match.idx]])), field)
+  col <- binding$field[match.idx]
+  col <- col[col %in% colnames(x)]
+  map.type(sub(regexes,'\\1', clean(x[,col])), field)
 }
 
 map.value(x, binding, field, EMPTY) %as% map.value(x, binding, field)
