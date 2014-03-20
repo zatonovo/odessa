@@ -95,7 +95,7 @@ construct_query <- function(uri, ...) {
 #'
 package_list(tag='', group='') %as% {
   uri <- 'http://odessa.zatonovo.com/api/3/action/package_list'
-  data <- .fetch_json(uri)
+  data <- fetch_data(uri, 'json')
   data$result
 }
 

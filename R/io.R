@@ -142,7 +142,7 @@ set_binding(id, binding) %as% {
 
 fetch_data(uri, 'csv', ...) %as% {
   text <- getURL(uri, ...)
-  read.csv(text, as.is=TRUE)
+  read.csv(text=text, as.is=TRUE)
 }
 
 fetch_data(uri, 'json', ...) %as% {
