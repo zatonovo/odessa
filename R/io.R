@@ -77,6 +77,7 @@ Odessa(id, fn=clean.format) %as% {
 data_format <- function(package) {
   n <- sapply(package$result$resources, function(x) x$name)
   idx <- which(n == 'data')
+  if (length(idx) == 0) return("")
   tolower(package$result$resources[[idx]]$format)
 }
 
