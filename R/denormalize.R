@@ -39,9 +39,14 @@ denormalize(o, keep=NULL, drop=NULL, transform=NULL) %as% {
     d <- o[!idx]
   else
     d <- lapply(o[[!idx]], transform)
-  # TODO: Add namespace
-  out <- c(d, do.call(c, lapply(o[idx], 
-    function(x) .denormalize(x, keep, drop))))
+
+  ns.fn <- function(ns, x) {
+    if (is.null(ns)) return(x)
+    paste(ns,x,sep='.')
+  }
+
+  out <- c(d, do.call(c, lapply(names(o[idx]), 
+    function(n) .denormalize(o[[n]], keep, drop, ns.fn(ns,n), transform))))
   as.data.frame(out)
 }
 
