@@ -10,7 +10,7 @@
 # denormalize(z$objects)
 denormalize(o, keep, drop, transform) %::% list : . : . : . : data.frame
 denormalize(o, keep=NULL, drop=NULL, transform=NULL) %as% {
-  out <- ldply(o, function(x) .denormalize(x, keep, drop))
+  out <- ldply(o, function(x) .denormalize(x, keep, drop, NULL, transform))
   #out <- onlyif(!is.null(keep),
   #  function(x) x[,colnames(x) %in% keep, drop=FALSE], out)
   #out <- onlyif(!is.null(drop),
