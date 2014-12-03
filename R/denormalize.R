@@ -16,8 +16,18 @@ denormalize(o, keep=NULL, drop=NULL, transform=NULL) %as% {
   #out <- onlyif(!is.null(drop),
   #  function(x) x[,!colnames(x) %in% drop, drop=FALSE], out)
   out <- unique(out)
-  onlyif(! is.null(o@odessa.id), 
-    function(x) { x@odessa.id <- o@odessa.id; x }, out)
+  if (! is.null(o@odessa.id)) out@odessa.id <- o@odessa.id
+  if (! is.null(keep)) out <- out[,keep]
+  out
+}
+
+.get_nodes <- function(keep, ns) {
+  if (! is.null(ns)) 
+    nodes <- strsplit(sub(sprintf('^%s',ns), '', keep),'.',fixed=TRUE)
+  else
+    nodes <- strsplit(keep,'.',fixed=TRUE)
+
+  do.call(c, lapply(nodes, function(x) if (length(x) > 1) return(x[1])) )
 }
 
 .denormalize <- function(o, keep, drop, ns=NULL, transform) {
@@ -27,18 +37,25 @@ denormalize(o, keep=NULL, drop=NULL, transform=NULL) %as% {
   if (is.null(ns)) k <- names(o)
   else k <- paste(ns, names(o), sep='.')
 
+  # Add roots to ensure traversal of sub nodes
+  keep <- c(keep, .get_nodes(keep,ns))
+
   # BOOK: Compare with onlyif
   # TODO: Ensure indices are compatible
-  if (! is.null(keep)) o <- o[k %in% keep]
-  if (! is.null(drop)) o <- o[! k %in% drop]
+  clean.fn <- function(x) {
+    if (! is.null(keep)) x <- x[k %in% keep]
+    if (! is.null(drop)) x <- x[! k %in% drop]
+    x
+  }
+  o <- clean.fn(o)
+  k <- clean.fn(k)
   if (length(o) == 0) return(NULL)
 
   idx <- sapply(o, function(x) is.list(x))
   # Apply transform
-  if (is.null(transform))
-    d <- o[!idx]
-  else
-    d <- lapply(o[[!idx]], transform)
+  if (is.null(transform)) d <- o[!idx]
+  else d <- lapply(o[[!idx]], transform)
+  names(d) <- k[!idx]
 
   ns.fn <- function(ns, x) {
     if (is.null(ns)) return(x)

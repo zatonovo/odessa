@@ -106,8 +106,52 @@ on dates as well as timestamps.
 
 This is almost too easy. That's the idea. 
 
-### More to come
-Pending
+### JSON Destroyer
+Many web services return JSON. While JSON is useful for describing 
+arbitrary data structures, it is a bear to use for data analysis. 
+Often the first step after downloading JSON data is to transform it
+into a denormalized table structure. Odessa provides the `denormalize`
+function to do just that. Just specify the keys you want and, Odessa
+does the rest.
+
+Here's an example with data from govtrack.us. Note the dot notation which
+specifies sub nodes.
+```R
+url <- 'https://www.govtrack.us/api/v2/role?current=true'
+r <- GET(url)
+o <- content(r)
+cols <- c('state','role_type','person.birthday','person.gender','party')
+df <- denormalize(o$objects, keep=cols)
+```
+
+The resulting data.frame looks like
+```R
+> head(df)
+  state role_type person.birthday person.gender      party
+  1    MO   senator      1950-01-10          male Republican
+  2    AR   senator      1950-12-10          male Republican
+  3    NC   senator      1955-11-30          male Republican
+  4    GA   senator      1944-12-28          male Republican
+  5    IL   senator      1959-09-15          male Republican
+  6    KS   senator      1954-05-29          male Republican
+```
+
+Going the other way, creating JSON data is not as smooth as you might expect.
+Out of the box using either RJSONIO or rjson, results in column-major data.
+This is to be expected since R stores data in column format.
+```R
+> toJSON(head(df))
+[1] "{\"state\":[\"MO\",\"AR\",\"NC\",\"GA\",\"IL\",\"KS\"],\"role_type\":[\"senator\",\"senator\",\"senator\",\"senator\",\"senator\",\"senator\"],\"person.birthday\":[\"1950-01-10\",\"1950-12-10\",\"1955-11-30\",\"1944-12-28\",\"1959-09-15\",\"1954-05-29\"],\"person.gender\":[\"male\",\"male\",\"male\",\"male\",\"male\",\"male\"],\"party\":[\"Republican\",\"Republican\",\"Republican\",\"Republican\",\"Republican\",\"Republican\"]}"
+```
+
+However, most Javascript libraries expect JSON to be in row-major format.
+For example, D3.js expects data sets to be in this structure. 
+Odessa provides the `row\_major` function to do this conversion so that
+the JSON serializers do the right thing.
+```R
+> toJSON(row_major(head(df)))
+[1] "[{\"state\":\"MO\",\"role_type\":\"senator\",\"person.birthday\":\"1950-01-10\",\"person.gender\":\"male\",\"party\":\"Republican\"},{\"state\":\"AR\",\"role_type\":\"senator\",\"person.birthday\":\"1950-12-10\",\"person.gender\":\"male\",\"party\":\"Republican\"},{\"state\":\"NC\",\"role_type\":\"senator\",\"person.birthday\":\"1955-11-30\",\"person.gender\":\"male\",\"party\":\"Republican\"},{\"state\":\"GA\",\"role_type\":\"senator\",\"person.birthday\":\"1944-12-28\",\"person.gender\":\"male\",\"party\":\"Republican\"},{\"state\":\"IL\",\"role_type\":\"senator\",\"person.birthday\":\"1959-09-15\",\"person.gender\":\"male\",\"party\":\"Republican\"},{\"state\":\"KS\",\"role_type\":\"senator\",\"person.birthday\":\"1954-05-29\",\"person.gender\":\"male\",\"party\":\"Republican\"}]"
+```
 
 Installation
 ============
