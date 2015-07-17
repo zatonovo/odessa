@@ -17,7 +17,7 @@ denormalize(o, keep=NULL, drop=NULL, transform=NULL) %as% {
   #  function(x) x[,!colnames(x) %in% drop, drop=FALSE], out)
   out <- unique(out)
   if (! is.null(o@odessa.id)) out@odessa.id <- o@odessa.id
-  if (! is.null(keep)) out <- out[,keep]
+  if (! is.null(keep)) out <- out[,intersect(keep,colnames(out))]
   out
 }
 

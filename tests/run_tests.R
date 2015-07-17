@@ -1,3 +1,3 @@
 library(testthat)
-library_if_available(odessa)
+library(odessa)
 test_package('odessa')
